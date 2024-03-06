@@ -37,19 +37,35 @@
         compileJSON(json);
       } catch(e) {
         console.log(e);
-        alert(`JSON input is invalid!\n\n${e.message}`);
+        alert(`[ERROR] JSON input is invalid!\n\n${e.message}`);
       }
     });
   };
 
-  function compileJSON(json) {
-    const { elements = [] } = json;
+  // Function to safely extract a nested property
+  function safeExtract(obj, path) {
+    return path.split('.').reduce(function(acc, key) {
+      return acc && acc[key] ? acc[key] : undefined;
+    }, obj);
+  }
 
-    // Function to safely extract a nested property
-    function safeExtract(obj, path) {
-        return path.split('.').reduce(function(acc, key) {
-            return acc && acc[key] ? acc[key] : undefined;
-        }, obj);
+  function compileJSON(json) {
+    let elements = [];
+    let shareTextDecoration = {};
+
+    // Query Payload
+    const decorationResponse = safeExtract(json, 'data.decoration');
+    const normalResponse = safeExtract(json, 'data.payloads.search.response.elements');
+    if (decorationResponse && normalResponse) {
+      shareTextDecoration = Object.entries(decorationResponse).reduce((acc, [key, value]) => {
+        acc[key] = safeExtract(value, 'subline');
+        return acc;
+      }, {});
+      elements = normalResponse;
+    } else {
+      alert('[WARNING] Using response payload instead of query payload will have truncated shareText')
+      // Response Payload
+      elements = json.elements ?? [];
     }
 
     // Iterate over elements
@@ -61,8 +77,8 @@
         // Extract text fields safely
         const memberName = safeExtract(item, 'itemUnion.entityResult.title.text');
         const memberHeadline = safeExtract(item, 'itemUnion.entityResult.primarySubtitle.text');
-        const shareText = safeExtract(item, 'itemUnion.entityResult.summary.text');
         const postUrn = safeExtract(item, 'itemUnion.entityResult.trackingUrn')
+        const shareText = shareTextDecoration[postUrn] ?? safeExtract(item, 'itemUnion.entityResult.summary.text');
 
         if (memberName && memberHeadline && shareText && postUrn) {
           results.push(`Author Name: ${memberName}\nAuthor Headline: ${memberHeadline}\nPost Text: ${shareText}\nPost URL: https://linkedin.com/feed/update/${postUrn}`);
@@ -73,7 +89,7 @@
     if (results.length !== 0) {
       document.getElementById('exampleOutput').value = results.join('\n\n');
     } else {
-      alert('No results from JSON!');
+      alert('[ERROR] No results from JSON!');
     }
   }
 </script>
