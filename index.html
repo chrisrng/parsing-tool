@@ -1,0 +1,79 @@
+<title>Parsing Tool</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.2.1.js"></script>
+
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+<body style="padding: 0 50px 25px; position: relative;">
+  <h1>Parsing Tool</h1>
+  <div class="form-group">
+    <label for="jsonInput">JSON Input</label>
+    <textarea type="text" class="form-control" id="jsonInput" rows="8"></textarea>
+  </div>
+  <div class="form-group">
+    <label for="exampleOutput">Output</label>
+    <textarea class="form-control" id="exampleOutput" rows="16"></textarea>
+  </div>
+  <button type="submit" id="compilebtn" class="btn btn-default">Compile!</button>
+  <div style="position: absolute; left: 0; right: 0; bottom: 0;">
+    <p class="text-center text-muted">Created by <a href="https://www.linkedin.com/in/chrisrng/" target="_blank">Chris Ng</a></p>
+  </div>
+</body>
+
+<script>
+  window.onload = () => {
+    $('#compilebtn').on('click', () => {
+      try {
+        const json = JSON.parse(document.getElementById('jsonInput').value);
+        compileJSON(json);
+      } catch(e) {
+        console.log(e);
+        alert(`JSON input is invalid!\n\n${e.message}`);
+      }
+    });
+  };
+
+  function compileJSON(json) {
+    const { elements = [] } = json;
+
+    // Function to safely extract a nested property
+    function safeExtract(obj, path) {
+        return path.split('.').reduce(function(acc, key) {
+            return acc && acc[key] ? acc[key] : undefined;
+        }, obj);
+    }
+
+    // Iterate over elements
+    const results = [];
+    elements.forEach((element) => {
+      // Iterate over items within each element
+      const items = safeExtract(element, 'items') ?? [];
+      items.forEach((item) => {
+        // Extract text fields safely
+        const memberName = safeExtract(item, 'itemUnion.entityResult.title.text');
+        const memberHeadline = safeExtract(item, 'itemUnion.entityResult.primarySubtitle.text');
+        const shareText = safeExtract(item, 'itemUnion.entityResult.summary.text');
+        const postUrn = safeExtract(item, 'itemUnion.entityResult.trackingUrn')
+
+        if (memberName && memberHeadline && shareText && postUrn) {
+          results.push(`Author Name: ${memberName}\nAuthor Headline: ${memberHeadline}\nPost Text: ${shareText}\nPost URL: https://linkedin.com/feed/update/${postUrn}`);
+        }
+      });
+    });
+
+    if (results.length !== 0) {
+      document.getElementById('exampleOutput').value = results.join('\n\n');
+    } else {
+      alert('No results from JSON!');
+    }
+  }
+</script>
